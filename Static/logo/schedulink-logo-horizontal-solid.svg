@@ -1,0 +1,17 @@
+<svg width="900" height="220" viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Schedulink logo, horizontal, solid background</title>
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@700&amp;display=swap');
+      .word { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="900" height="220" fill="#12182A"/>
+  <g transform="translate(40,10)">
+    <path d="M 107.64 115.33 A 44 44 0 1 1 143.33 79.64" fill="none" stroke="#1F6F64" stroke-width="26" stroke-linecap="round"/>
+    <path d="M 92.36 84.67 A 44 44 0 1 1 56.67 120.36" fill="none" stroke="#C98A2C" stroke-width="26" stroke-linecap="round"/>
+    <circle cx="143.33" cy="79.64" r="8" fill="#C98A2C"/>
+    <circle cx="56.67" cy="120.36" r="8" fill="#1F6F64"/>
+  </g>
+  <text x="240" y="128" class="word" font-size="66" fill="#FFFFFF">Schedulink</text>
+</svg>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedulink — Welcome</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='logo/SLIcon.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F2ED;
+    --paper-raised:#FFFFFF;
+    --ink:#1C2431;
+    --ink-soft:#5B6472;
+    --line:#DCDACF;
+    --teal:#1F6F64;
+    --teal-soft:#E4EFEC;
+    --amber:#C98A2C;
+    --amber-soft:#F6EBD8;
+    --focus:#1F6F64;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    position:relative;
+    background:var(--paper-raised);
+    border-bottom:1px solid var(--line);
+    padding:22px 32px 26px;
+    overflow:hidden;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:repeating-linear-gradient(
+      to bottom, transparent 0, transparent 27px, rgba(28,36,49,0.05) 28px
+    );
+    pointer-events:none;
+  }
+  .topbar-inner{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    max-width:1100px;
+    margin:0 auto;
+  }
+  .topbar img{ max-height:40px; display:block; }
+  .brand-text .word{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:26px;
+    color:var(--ink);
+    line-height:1;
+  }
+  .brand-text .tag{
+    display:block;
+    margin-top:4px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    max-width:1100px;
+    margin:0 auto;
+    padding:56px 32px 20px;
+    text-align:center;
+  }
+  .hero h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(28px, 4vw, 40px);
+    margin:0 0 10px;
+  }
+  .hero p{
+    color:var(--ink-soft);
+    font-size:15.5px;
+    max-width:520px;
+    margin:0 auto 36px;
+  }
+
+  /* ---------- Portal choice cards ---------- */
+  .portals{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:20px;
+    max-width:640px;
+    margin:0 auto;
+  }
+  .portal-card{
+    display:block;
+    text-decoration:none;
+    background:var(--paper-raised);
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:28px 22px;
+    transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .portal-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 10px 22px rgba(28,36,49,0.08);
+  }
+  .portal-card:focus-visible{ outline:2px solid var(--focus); outline-offset:3px; }
+  .portal-card .kicker{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    padding:4px 10px;
+    border-radius:20px;
+    margin-bottom:14px;
+  }
+  .portal-card.customer{ border-color:rgba(31,111,100,0.3); }
+  .portal-card.customer .kicker{ background:var(--teal-soft); color:var(--teal); }
+  .portal-card.customer:hover{ border-color:var(--teal); }
+  .portal-card.professional{ border-color:rgba(201,138,44,0.35); }
+  .portal-card.professional .kicker{ background:var(--amber-soft); color:var(--amber); }
+  .portal-card.professional:hover{ border-color:var(--amber); }
+  .portal-card h3{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:19px;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .portal-card p{
+    margin:0;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- Registration section ---------- */
+  .register-section{
+    max-width:1100px;
+    margin:56px auto 0;
+    padding:0 32px 64px;
+  }
+  .register-section > .lede{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13.5px;
+    margin:0 0 26px;
+  }
+  .register-section .lede-title{
+    text-align:center;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:21px;
+    margin:0 0 6px;
+  }
+  .container{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:22px;
+  }
+  .form-box{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:24px 26px 28px;
+  }
+  .form-box h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:18px;
+    margin:0 0 4px;
+  }
+  .form-box .form-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 18px;
+  }
+  .field{ display:flex; flex-direction:column; gap:5px; margin-bottom:13px; }
+  .field label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .field input, .field select{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    background:var(--paper);
+    color:var(--ink);
+    width:100%;
+  }
+  .field select{
+    appearance:none;
+    background-image:linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position:calc(100% - 16px) center, calc(100% - 11px) center;
+    background-size:5px 5px, 5px 5px;
+    background-repeat:no-repeat;
+    padding-right:28px;
+  }
+  .field input:focus-visible, .field select:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+
+  .form-box.customer button{ background:var(--teal); }
+  .form-box.customer button:hover{ background:#175951; }
+  .form-box.professional button{ background:var(--amber); }
+  .form-box.professional button:hover{ background:#a8721f; }
+
+  button[type="submit"]{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:14px;
+    padding:10px;
+    width:100%;
+    border:none;
+    border-radius:5px;
+    color:#fff;
+    cursor:pointer;
+    margin-top:6px;
+    transition:background 0.15s ease;
+  }
+
+  pre, .result{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    color:var(--ink-soft);
+  }
+  #proRegisterResult, #custRegisterResult{
+    margin-top:12px;
+  }
+  #proRegisterResult:not(:empty), #custRegisterResult:not(:empty){
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:12px;
+  }
+
+  @media (max-width:640px){
+    .topbar{ padding:18px 18px 22px; }
+    .hero{ padding:40px 18px 16px; }
+    .register-section{ padding:0 18px 48px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <img src="{{ url_for('static', filename='logo/schedulink-logo-horizontal-transparent.png') }}" alt="Schedulink logo">
+    <div class="brand-text">
+      <span class="word"></span>
+      <span class="tag">Appointments, kept simple</span>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Welcome to Schedulink</h1>
+  <p>Book with your favorite professionals, or manage your own schedule — pick a portal to get started.</p>
+
+  <div class="portals">
+    <a href="/customer" class="portal-card customer">
+      <span class="kicker">Customer</span>
+      <h3>Customer Login</h3>
+      <p>Find professionals nearby and book a time that suits you.</p>
+    </a>
+    <a href="/professional" class="portal-card professional">
+      <span class="kicker">Professional</span>
+      <h3>Professional Login</h3>
+      <p>Open slots, review bookings, and manage your day.</p>
+    </a>
+  </div>
+</section>
+
+<section class="register-section">
+  <p class="lede-title">New here?</p>
+  <p class="lede">Create an account to get started with Schedulink.</p>
+
+  <div class="container">
+    <!-- Professional Registration -->
+    <div class="form-box professional">
+      <h2>Register as Professional</h2>
+      <p class="form-sub">Doctors · Lawyers · Salons · More</p>
+      <form id="proRegisterForm">
+        <div class="field"><label for="proName">Name</label><input type="text" id="proName" required></div>
+        <div class="field"><label for="proEmail">Email</label><input type="email" id="proEmail" required></div>
+        <div class="field"><label for="proPassword">Password</label><input type="password" id="proPassword" required></div>
+        <div class="field">
+          <label for="proBusinessType">Business type</label>
+          <select id="proBusinessType" required>
+            <option value="Doctor">Doctor</option>
+            <option value="Lawyer">Lawyer</option>
+            <option value="Salon">Salon</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label for="proEstablishment">Establishment name</label><input type="text" id="proEstablishment" required></div>
+        <div class="field"><label for="proCity">City</label><input type="text" id="proCity" required></div>
+        <div class="field"><label for="proPincode">Pin code</label><input type="text" id="proPincode" required></div>
+        <button type="submit">Register</button>
+      </form>
+      <div id="proRegisterResult"></div>
+    </div>
+
+    <!-- Customer Registration -->
+    <div class="form-box customer">
+      <h2>Register as Customer</h2>
+      <p class="form-sub">Book appointments in a few taps</p>
+      <form id="custRegisterForm">
+        <div class="field"><label for="custName">Name</label><input type="text" id="custName" required></div>
+        <div class="field"><label for="custPhone">Phone</label><input type="text" id="custPhone" required></div>
+        <div class="field"><label for="custPassword">Password</label><input type="password" id="custPassword" required></div>
+        <button type="submit">Register</button>
+      </form>
+      <div id="custRegisterResult"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+const API_URL="http://127.0.0.1:5000";
+
+// Professional registration
+document.getElementById("proRegisterForm").onsubmit=function(e){
+  e.preventDefault();
+  fetch(`${API_URL}/register_professional`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      name:proName.value,
+      email:proEmail.value,
+      password:proPassword.value,
+      business_type:proBusinessType.value,
+      establishment:proEstablishment.value,
+      city:proCity.value,
+      pincode:proPincode.value
+    })
+  }).then(r=>r.json()).then(d=>proRegisterResult.innerHTML=JSON.stringify(d,null,2));
+};
+
+// Customer registration
+document.getElementById("custRegisterForm").onsubmit=function(e){
+  e.preventDefault();
+  fetch(`${API_URL}/register_customer`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      name:custName.value,
+      phone:custPhone.value,
+      password:custPassword.value
+    })
+  }).then(r=>r.json()).then(d=>custRegisterResult.innerHTML=JSON.stringify(d,null,2));
+};
+</script>
+</body>
+</html>

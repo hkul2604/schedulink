@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedulink — Professional Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#d1dceb;
+    --paper-raised:#FFFFFF;
+    --ink:#1C2431;
+    --ink-soft:#5B6472;
+    --line:#DCDACF;
+    --teal:#1F6F64;
+    --teal-soft:#E4EFEC;
+    --amber:#C98A2C;
+    --amber-soft:#F6EBD8;
+    --burgundy:#7A2E2E;
+    --burgundy-soft:#F1E2DF;
+    --tab-inactive:#E7E5DC;
+    --focus:#1F6F64;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    position:relative;
+    background:var(--paper-raised);
+    border-bottom:1px solid var(--line);
+    padding:22px 32px 26px;
+    overflow:hidden;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      rgba(28,36,49,0.05) 28px
+    );
+    pointer-events:none;
+  }
+  .topbar-inner{
+    position:relative;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:16px;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand img{ max-height:40px; display:block; }
+  .brand-text .word{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:26px;
+    letter-spacing:0.2px;
+    color:var(--ink);
+    line-height:1;
+  }
+  .brand-text .tag{
+    display:block;
+    margin-top:4px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- Login widget ---------- */
+  .account-box{ min-width:260px; }
+  #loginForm{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  #loginForm input{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--paper);
+    color:var(--ink);
+    width:150px;
+  }
+  #loginForm input:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:1px;
+  }
+  #loginForm button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:13.5px;
+    padding:8px 16px;
+    border:none;
+    border-radius:4px;
+    background:var(--ink);
+    color:#fff;
+    cursor:pointer;
+    transition:background 0.15s ease;
+  }
+  #loginForm button:hover{ background:var(--teal); }
+
+  #loginResult p{ margin:8px 0 0; font-size:13.5px; }
+  #loginResult strong{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:600;
+  }
+  .welcome-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--teal-soft);
+    color:var(--teal);
+    border-radius:20px;
+    padding:8px 14px 8px 10px;
+    font-size:13.5px;
+  }
+  .welcome-pill .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--teal);
+    flex:none;
+  }
+
+  /* ---------- Ledger tab navigation ---------- */
+  nav.ledger-tabs{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 32px;
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    margin-top:18px;
+  }
+  nav.ledger-tabs button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    background:var(--tab-inactive);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:8px 8px 0 0;
+    padding:10px 18px;
+    cursor:pointer;
+    white-space:nowrap;
+    transform:translateY(3px);
+    transition:transform 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  nav.ledger-tabs button:hover{ color:var(--ink); }
+  nav.ledger-tabs button.active{
+    background:var(--paper-raised);
+    color:var(--ink);
+    font-weight:500;
+    transform:translateY(0);
+    border-color:var(--line);
+    box-shadow:0 -1px 0 var(--paper-raised);
+  }
+  nav.ledger-tabs button:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:2px;
+  }
+
+  /* ---------- Main content ---------- */
+  main{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 32px 60px;
+  }
+  .panel{
+    display:none;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:0 10px 10px 10px;
+    padding:28px 30px 34px;
+    margin-top:-1px;
+  }
+  .panel.active{ display:block; }
+
+  .panel h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:21px;
+    margin:0 0 4px;
+  }
+  .panel .lede{
+    color:var(--ink-soft);
+    font-size:13.5px;
+    margin:0 0 20px;
+  }
+
+  .field-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    margin-bottom:18px;
+  }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .field input{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    background:var(--paper);
+    color:var(--ink);
+    min-width:160px;
+  }
+  .field input:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:1px;
+  }
+
+  .btn-primary{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:14px;
+    padding:10px 20px;
+    border:none;
+    border-radius:5px;
+    background:var(--teal);
+    color:#fff;
+    cursor:pointer;
+    transition:background 0.15s ease;
+    height:fit-content;
+  }
+  .btn-primary:hover{ background:#175951; }
+  .btn-primary:focus-visible{
+    outline:2px solid var(--ink);
+    outline-offset:2px;
+  }
+
+  pre#addSlotsResult{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:14px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    color:var(--ink-soft);
+    margin:0;
+  }
+  #addSlotsResult:empty{ display:none; }
+
+  /* ---------- Tables ---------- */
+  .table-wrap{ overflow-x:auto; margin-top:4px; }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    min-width:520px;
+  }
+  th{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid var(--ink);
+    background:transparent;
+  }
+  td{
+    padding:11px 12px;
+    border-bottom:1px solid var(--line);
+    font-size:13.5px;
+    vertical-align:middle;
+  }
+  td.mono, th.mono{ font-family:'IBM Plex Mono', monospace; }
+  tbody tr:hover{ background:rgba(31,111,100,0.04); }
+
+  .empty-state{
+    padding:26px 4px;
+    color:var(--ink-soft);
+    font-size:13.5px;
+    border:1px dashed var(--line);
+    border-radius:8px;
+    text-align:center;
+    margin-top:6px;
+  }
+
+  /* Status badges — stamped ledger style */
+  .badge{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:4px 10px;
+    border-radius:3px;
+    border:1px solid transparent;
+  }
+  .badge.status-approved, .badge.status-confirmed, .badge.status-open{
+    color:var(--teal); background:var(--teal-soft); border-color:rgba(31,111,100,0.25);
+  }
+  .badge.status-pending{
+    color:var(--amber); background:var(--amber-soft); border-color:rgba(201,138,44,0.3);
+  }
+  .badge.status-rejected, .badge.status-cancelled, .badge.status-full{
+    color:var(--burgundy); background:var(--burgundy-soft); border-color:rgba(122,46,46,0.25);
+  }
+  .badge.status-default{
+    color:var(--ink-soft); background:var(--tab-inactive); border-color:var(--line);
+  }
+
+  /* Action buttons in appointments table */
+  .actions{ display:flex; gap:6px; flex-wrap:wrap; }
+  button.action{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    font-weight:500;
+    padding:6px 11px;
+    border-radius:4px;
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+    cursor:pointer;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  button.action.approve{ color:var(--teal); }
+  button.action.approve:hover{ background:var(--teal-soft); border-color:var(--teal); }
+  button.action.reject{ color:var(--burgundy); }
+  button.action.reject:hover{ background:var(--burgundy-soft); border-color:var(--burgundy); }
+  button.action.cancel{ color:var(--ink-soft); }
+  button.action.cancel:hover{ background:var(--tab-inactive); border-color:var(--ink-soft); }
+
+  @media (max-width:640px){
+    .topbar{ padding:18px 18px 22px; }
+    nav.ledger-tabs, main{ padding-left:18px; padding-right:18px; }
+    .panel{ padding:20px 18px 26px; }
+    .field input{ min-width:120px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo/Copilot_20260803_175648.png') }}" alt="Schedulink logo">
+      <div class="brand-text">
+        <span class="word"></span>
+        <span class="tag">Professional Desk</span>
+      </div>
+    </div>
+    <div class="account-box">
+      <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Log in</button>
+      </form>
+      <div id="loginResult"></div>
+    </div>
+  </div>
+</header>
+
+<nav class="ledger-tabs" role="tablist" aria-label="Dashboard sections">
+  <button class="tab-btn active" data-tab="tab-add" type="button">Add Slots</button>
+  <button class="tab-btn" data-tab="tab-view" type="button">Available Slots</button>
+  <button class="tab-btn" data-tab="tab-appts" type="button">Appointments</button>
+  <button class="tab-btn" data-tab="tab-metrics" type="button">Metrics</button>
+</nav>
+
+<main>
+
+  <!-- Add Slots -->
+  <section id="tab-add" class="panel active">
+    <h2>Add slots</h2>
+    <p class="lede">Open a block of appointment slots for a given date.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="slotDate">Date</label>
+        <input type="date" id="slotDate">
+      </div>
+      <div class="field" style="flex:1; min-width:220px;">
+        <label for="slots">Slots (comma separated)</label>
+        <input type="text" id="slots" placeholder="e.g. 09:00, 09:30, 10:00">
+      </div>
+      <div class="field">
+        <label for="capacity">Capacity per slot</label>
+        <input type="number" id="capacity" value="1" min="1">
+      </div>
+      <button class="btn-primary" onclick="addSlots()">Add slots</button>
+    </div>
+    <pre id="addSlotsResult"></pre>
+  </section>
+
+  <!-- View Slots -->
+  <section id="tab-view" class="panel">
+    <h2>Available slots</h2>
+    <p class="lede">Check capacity and bookings for a specific date.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="viewSlotDate">Date</label>
+        <input type="date" id="viewSlotDate">
+      </div>
+      <button class="btn-primary" onclick="viewSlots()">View slots</button>
+    </div>
+    <div id="slotsTable"></div>
+  </section>
+
+  <!-- Appointments -->
+  <section id="tab-appts" class="panel">
+    <h2>Appointments</h2>
+    <p class="lede">Review bookings and approve, reject, or cancel each one.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="apptDate">Date</label>
+        <input type="date" id="apptDate">
+      </div>
+      <button class="btn-primary" onclick="viewAppointments()">View appointments</button>
+    </div>
+    <div id="appointments"></div>
+  </section>
+
+  <!-- Metrics -->
+  <section id="tab-metrics" class="panel">
+    <h2>Metrics</h2>
+    <p class="lede">Daily totals at a glance.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="metricsDate">Date</label>
+        <input type="date" id="metricsDate">
+      </div>
+      <button class="btn-primary" onclick="viewMetrics()">View metrics</button>
+    </div>
+    <div id="metrics"></div>
+  </section>
+
+</main>
+
+<script>
+const API_URL="http://127.0.0.1:5000"; let professionalName="";
+
+/* ---------- Tab switching ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- Helpers ---------- */
+function statusClass(status){
+  const s = (status || "").toString().trim().toLowerCase();
+  if (["approved","confirmed","open"].includes(s)) return "status-approved";
+  if (s === "pending") return "status-pending";
+  if (["rejected","cancelled","canceled","full"].includes(s)) return "status-rejected";
+  return "status-default";
+}
+function badge(status){
+  return `<span class="badge ${statusClass(status)}">${status ?? "—"}</span>`;
+}
+
+/* ---------- Login ---------- */
+document.getElementById("loginForm").onsubmit = function(e) {
+  e.preventDefault();
+  const email = document.getElementById("email");
+  const password = document.getElementById("password");
+  const loginResult = document.getElementById("loginResult");
+
+  fetch(`${API_URL}/login_professional`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.value, password: password.value })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.name) {
+      professionalName = d.name;
+      loginResult.innerHTML = `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${professionalName}</strong></p>`;
+    } else {
+      loginResult.innerHTML = `<p style="color:#7A2E2E;">Login failed. Check your email and password.</p>`;
+    }
+  })
+  .catch(err => {
+    loginResult.innerHTML = `<p style="color:#7A2E2E;">Error: ${err.message}</p>`;
+  });
+};
+
+/* ---------- Add slots ---------- */
+function addSlots(){
+ fetch(`${API_URL}/add_slots`,{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({name:professionalName,date:slotDate.value,
+     slots:slots.value.split(",").map(s=>s.trim()),capacity:parseInt(capacity.value)})
+ }).then(r=>r.json()).then(d=>addSlotsResult.innerHTML=JSON.stringify(d,null,2));
+}
+
+/* ---------- View slots ---------- */
+function viewSlots(){
+ fetch(`${API_URL}/slots/${professionalName}/${viewSlotDate.value}`)
+ .then(r=>r.json()).then(data=>{
+   if(!data || data.length===0){
+     slotsTable.innerHTML = `<div class="empty-state">No slots opened for this date yet. Add some from the Add Slots tab.</div>`;
+     return;
+   }
+   let html=`<div class="table-wrap"><table><tr><th class="mono">Slot</th><th>Capacity</th><th>Booked</th><th>Status</th></tr>`;
+   data.forEach(s=>{html+=`<tr><td class="mono">${s.slot}</td><td>${s.capacity}</td><td>${s.booked}</td><td>${badge(s.status)}</td></tr>`});
+   html+="</table></div>"; slotsTable.innerHTML=html;
+ });
+}
+
+/* ---------- Metrics ---------- */
+function viewMetrics(){
+ fetch(`${API_URL}/metrics/${professionalName}/${metricsDate.value}`)
+ .then(r=>r.json()).then(data=>{
+   if(!data || Object.keys(data).length===0){
+     metrics.innerHTML = `<div class="empty-state">No metrics recorded for this date yet.</div>`;
+     return;
+   }
+   let html=`<div class="table-wrap"><table><tr><th>Metric</th><th class="mono">Count</th></tr>`;
+   for(const k in data){html+=`<tr><td>${k}</td><td class="mono">${data[k]}</td></tr>`}
+   html+="</table></div>"; metrics.innerHTML=html;
+ });
+}
+
+/* ---------- Appointments ---------- */
+function viewAppointments(){
+ fetch(`${API_URL}/appointments/professional/${professionalName}/${apptDate.value}`)
+ .then(r=>r.json()).then(data=>{
+   if(!data || data.length===0){
+     appointments.innerHTML = `<div class="empty-state">No appointments booked for this date.</div>`;
+     return;
+   }
+   let html=`<div class="table-wrap"><table><tr><th>Customer</th><th>Phone</th><th class="mono">Slot</th><th>Status</th><th>Actions</th></tr>`;
+   data.forEach(a=>{
+     html+=`<tr><td>${a.customer_name}</td><td class="mono">${a.customer_phone}</td><td class="mono">${a.slot}</td><td>${badge(a.status)}</td>
+     <td>
+       <div class="actions">
+         <button class="action approve" onclick="updateStatus('${a.customer_phone}','${a.slot}','${apptDate.value}','Approved')">Approve</button>
+         <button class="action reject" onclick="updateStatus('${a.customer_phone}','${a.slot}','${apptDate.value}','Rejected')">Reject</button>
+         <button class="action cancel" onclick="updateStatus('${a.customer_phone}','${a.slot}','${apptDate.value}','Cancelled')">Cancel</button>
+       </div>
+     </td></tr>`;
+   });
+   html+="</table></div>"; appointments.innerHTML=html;
+ });
+}
+
+/* ---------- Update status ---------- */
+function updateStatus(phone,slot,date,action){
+ let ep=action==="Approved"?"approve":action==="Rejected"?"reject":"cancel";
+ fetch(`${API_URL}/${ep}`,{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({phone:phone,professional:professionalName,slot:slot,date:date})
+ }).then(r=>r.json()).then(d=>{
+   alert(JSON.stringify(d)); viewAppointments(); viewSlots(); viewMetrics();
+ });
+}
+</script>
+</body>
+</html>

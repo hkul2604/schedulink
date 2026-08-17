@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedulink — Book an Appointment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F2ED;
+    --paper-raised:#FFFFFF;
+    --ink:#1C2431;
+    --ink-soft:#5B6472;
+    --line:#DCDACF;
+    --teal:#1F6F64;
+    --teal-soft:#E4EFEC;
+    --amber:#C98A2C;
+    --amber-soft:#F6EBD8;
+    --burgundy:#7A2E2E;
+    --burgundy-soft:#F1E2DF;
+    --tab-inactive:#E7E5DC;
+    --focus:#1F6F64;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    position:relative;
+    background:var(--paper-raised);
+    border-bottom:1px solid var(--line);
+    padding:22px 32px 26px;
+    overflow:hidden;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:repeating-linear-gradient(
+      to bottom, transparent 0, transparent 27px, rgba(28,36,49,0.05) 28px
+    );
+    pointer-events:none;
+  }
+  .topbar-inner{
+    position:relative;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:16px;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand img{ max-height:40px; display:block; }
+  .brand-text .word{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:26px;
+    color:var(--ink);
+    line-height:1;
+  }
+  .brand-text .tag{
+    display:block;
+    margin-top:4px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+
+  .account-box{ min-width:220px; }
+  #loginForm{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0; }
+  #loginForm input{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--paper);
+    color:var(--ink);
+    width:150px;
+  }
+  #loginForm input:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+  #loginForm button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:13.5px;
+    padding:8px 16px;
+    border:none;
+    border-radius:4px;
+    background:var(--ink);
+    color:#fff;
+    cursor:pointer;
+    transition:background 0.15s ease;
+  }
+  #loginForm button:hover{ background:var(--teal); }
+  #loginResult{ width:100%; }
+  #loginResult p{ margin:8px 0 0; font-size:13.5px; }
+  #loginResult strong{ font-family:'Fraunces', serif; font-style:italic; font-weight:600; }
+  .welcome-pill{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--teal-soft); color:var(--teal);
+    border-radius:20px; padding:8px 14px 8px 10px; font-size:13.5px;
+  }
+  .welcome-pill .dot{ width:8px; height:8px; border-radius:50%; background:var(--teal); flex:none; }
+
+  /* ---------- Ledger tabs (shared nav pattern) ---------- */
+  nav.ledger-tabs{
+    max-width:1180px; margin:0 auto; padding:0 32px;
+    display:flex; gap:6px; overflow-x:auto; margin-top:18px;
+  }
+  nav.ledger-tabs button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--ink-soft); background:var(--tab-inactive);
+    border:1px solid var(--line); border-bottom:none;
+    border-radius:8px 8px 0 0; padding:10px 18px; cursor:pointer;
+    white-space:nowrap; transform:translateY(3px);
+    transition:transform 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  nav.ledger-tabs button:hover{ color:var(--ink); }
+  nav.ledger-tabs button.active{
+    background:var(--paper-raised); color:var(--ink); font-weight:500;
+    transform:translateY(0); box-shadow:0 -1px 0 var(--paper-raised);
+  }
+  nav.ledger-tabs button:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  main{ max-width:1180px; margin:0 auto; padding:0 32px 60px; }
+  .panel{
+    display:none;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:0 10px 10px 10px;
+    padding:28px 30px 34px;
+    margin-top:-1px;
+  }
+  .panel.active{ display:block; }
+  .panel h2{ font-family:'Fraunces', serif; font-weight:600; font-size:21px; margin:0 0 4px; }
+  .panel h3{ font-family:'Fraunces', serif; font-weight:600; font-size:16.5px; margin:26px 0 10px; }
+  .panel .lede{ color:var(--ink-soft); font-size:13.5px; margin:0 0 20px; }
+
+  /* ---------- Filters ---------- */
+  .filter-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    margin-bottom:26px;
+  }
+  .filter-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:14px;
+  }
+  .combo{ display:flex; flex-direction:column; gap:6px; }
+  .combo label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .combo input, .combo select{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    background:var(--paper-raised);
+    color:var(--ink);
+  }
+  .combo input{ margin-bottom:-2px; }
+  .combo select{
+    appearance:none;
+    background-image:linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position:calc(100% - 16px) center, calc(100% - 11px) center;
+    background-size:5px 5px, 5px 5px;
+    background-repeat:no-repeat;
+    padding-right:28px;
+  }
+  .combo input:focus-visible, .combo select:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+  .filter-actions{ margin-top:16px; display:flex; justify-content:flex-end; }
+
+  .btn-primary{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500; font-size:14px;
+    padding:10px 20px; border:none; border-radius:5px;
+    background:var(--teal); color:#fff; cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease;
+    height:fit-content;
+  }
+  .btn-primary:hover{ background:#175951; }
+  .btn-primary:active{ transform:scale(0.97); }
+  .btn-primary:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  /* ---------- Professional select + booking form ---------- */
+  .field-row{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-bottom:8px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .field input, .field select{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px; padding:9px 11px;
+    border:1px solid var(--line); border-radius:5px;
+    background:var(--paper); color:var(--ink);
+    min-width:200px;
+  }
+  #professional{ min-width:320px; }
+  .field input:focus-visible, .field select:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+
+  /* ---------- Slot picker grid (signature element) ---------- */
+  .slot-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));
+    gap:10px;
+    margin-top:14px;
+  }
+  .slot-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    text-align:center;
+    padding:12px 8px;
+    border-radius:8px;
+    border:1.5px solid var(--line);
+    background:var(--paper-raised);
+    color:var(--ink-soft);
+    cursor:default;
+    transition:transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  }
+  .slot-chip .cap{
+    display:block;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:10px;
+    letter-spacing:0.04em;
+    margin-top:4px;
+    opacity:0.8;
+  }
+  .slot-chip.bookable{
+    border-color:var(--teal);
+    color:var(--teal);
+    cursor:pointer;
+  }
+  .slot-chip.bookable:hover{
+    background:var(--teal);
+    color:#fff;
+    transform:translateY(-2px);
+    box-shadow:0 6px 14px rgba(31,111,100,0.25);
+  }
+  .slot-chip.bookable:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  .slot-chip.filling{ border-color:var(--amber); color:var(--amber); background:var(--amber-soft); }
+  .slot-chip.filling:hover{ background:var(--amber); color:#fff; transform:translateY(-2px); box-shadow:0 6px 14px rgba(201,138,44,0.25); }
+  .slot-chip.full{ border-color:var(--line); color:#9AA0A8; background:var(--tab-inactive); cursor:not-allowed; }
+  .slot-chip.full .status-label{ text-decoration:line-through; }
+
+  /* ---------- Tables (My Appointments) ---------- */
+  .table-wrap{ overflow-x:auto; margin-top:4px; }
+  table{ border-collapse:collapse; width:100%; min-width:520px; }
+  th{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft);
+    text-align:left; padding:10px 12px; border-bottom:1px solid var(--ink);
+  }
+  td{ padding:11px 12px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle; }
+  td.mono, th.mono{ font-family:'IBM Plex Mono', monospace; }
+  tbody tr:hover{ background:rgba(31,111,100,0.04); }
+
+  .badge{
+    display:inline-block; font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+    padding:4px 10px; border-radius:3px; border:1px solid transparent;
+  }
+  .badge.status-approved, .badge.status-confirmed, .badge.status-available, .badge.status-open{
+    color:var(--teal); background:var(--teal-soft); border-color:rgba(31,111,100,0.25);
+  }
+  .badge.status-pending, .badge.status-filling-fast{
+    color:var(--amber); background:var(--amber-soft); border-color:rgba(201,138,44,0.3);
+  }
+  .badge.status-rejected, .badge.status-cancelled, .badge.status-full{
+    color:var(--burgundy); background:var(--burgundy-soft); border-color:rgba(122,46,46,0.25);
+  }
+  .badge.status-default{ color:var(--ink-soft); background:var(--tab-inactive); border-color:var(--line); }
+
+  button.action{
+    font-family:'IBM Plex Sans', sans-serif; font-size:12px; font-weight:500;
+    padding:6px 11px; border-radius:4px; border:1px solid var(--line);
+    background:var(--paper-raised); color:var(--teal); cursor:pointer;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  button.action:hover{ background:var(--teal-soft); border-color:var(--teal); }
+
+  .empty-state{
+    padding:26px 4px; color:var(--ink-soft); font-size:13.5px;
+    border:1px dashed var(--line); border-radius:8px; text-align:center; margin-top:6px;
+  }
+
+  @media (max-width:640px){
+    .topbar{ padding:18px 18px 22px; }
+    nav.ledger-tabs, main{ padding-left:18px; padding-right:18px; }
+    .panel{ padding:20px 18px 26px; }
+    #professional{ min-width:0; width:100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo/Copilot_20260803_175648.png') }}" alt="Schedulink logo">
+      <div class="brand-text">
+        <span class="word"></span>
+        <span class="tag">Book an appointment</span>
+      </div>
+    </div>
+    <div class="account-box">
+      <form id="loginForm">
+        <input type="text" id="phone" placeholder="Phone number" required>
+        <button type="submit">Log in</button>
+        <div id="loginResult"></div>
+      </form>
+    </div>
+  </div>
+</header>
+
+<nav class="ledger-tabs" role="tablist" aria-label="Dashboard sections">
+  <button class="tab-btn active" data-tab="tab-book" type="button">Book Appointment</button>
+  <button class="tab-btn" data-tab="tab-mine" type="button">My Appointments</button>
+</nav>
+
+<main>
+
+  <!-- Book Appointment -->
+  <section id="tab-book" class="panel active">
+    <h2>Find a professional</h2>
+    <p class="lede">Narrow the list by city, establishment, or pin code, then pick a time that works.</p>
+
+    <div class="filter-card">
+      <div class="filter-grid">
+        <div class="combo">
+          <label for="citySearch">City</label>
+          <input type="text" id="citySearch" placeholder="Search city…" onkeyup="filterDropdown('cityFilter','citySearch')">
+          <select id="cityFilter"></select>
+        </div>
+        <div class="combo">
+          <label for="estSearch">Establishment</label>
+          <input type="text" id="estSearch" placeholder="Search establishment…" onkeyup="filterDropdown('establishmentFilter','estSearch')">
+          <select id="establishmentFilter"></select>
+        </div>
+        <div class="combo">
+          <label for="pinSearch">Pin code</label>
+          <input type="text" id="pinSearch" placeholder="Search pin code…" onkeyup="filterDropdown('pincodeFilter','pinSearch')">
+          <select id="pincodeFilter"></select>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button class="btn-primary" onclick="applyFilters()">Apply filters</button>
+      </div>
+    </div>
+
+    <h3>Choose a time</h3>
+    <div class="field-row">
+      <div class="field" style="flex:1;">
+        <label for="professional">Professional</label>
+        <select id="professional"></select>
+      </div>
+      <div class="field">
+        <label for="slotDate">Date</label>
+        <input type="date" id="slotDate">
+      </div>
+      <button class="btn-primary" onclick="viewSlots()">View slots</button>
+    </div>
+    <div id="slotsTable"></div>
+  </section>
+
+  <!-- My Appointments -->
+  <section id="tab-mine" class="panel">
+    <h2>My appointments</h2>
+    <p class="lede">Track your bookings and reschedule if plans change.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="apptDate">Date</label>
+        <input type="date" id="apptDate">
+      </div>
+      <button class="btn-primary" onclick="viewMyAppointments()">View my appointments</button>
+    </div>
+    <div id="myAppointments"></div>
+  </section>
+
+</main>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+let customerPhone = "", customerName = "";
+let allProfessionals = [];
+
+/* ---------- Tab switching ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- Helpers ---------- */
+function statusClass(status){
+  const s = (status || "").toString().trim().toLowerCase();
+  if (["approved","confirmed","available","open"].includes(s)) return "status-approved";
+  if (["pending","filling fast"].includes(s)) return "status-pending";
+  if (["rejected","cancelled","canceled","full"].includes(s)) return "status-rejected";
+  return "status-default";
+}
+function badge(status){
+  return `<span class="badge ${statusClass(status)}">${status ?? "—"}</span>`;
+}
+
+// Load professionals and populate filters
+function loadProfessionals() {
+  fetch(`${API_URL}/professionals`)
+    .then(r => r.json())
+    .then(data => {
+      allProfessionals = data;
+      populateDropdown("cityFilter", [...new Set(data.map(p => p.city))]);
+      populateDropdown("establishmentFilter", [...new Set(data.map(p => p.establishment))]);
+      populateDropdown("pincodeFilter", [...new Set(data.map(p => p.pincode))]);
+      updateProfessionalDropdown(data);
+    });
+}
+
+function populateDropdown(id, values) {
+  let sel = document.getElementById(id);
+  sel.innerHTML = "";
+  values.forEach(v => {
+    if (v) {
+      let opt = document.createElement("option");
+      opt.value = v;
+      opt.text = v;
+      sel.add(opt);
+    }
+  });
+}
+
+function filterDropdown(selectId, inputId) {
+  let filter = document.getElementById(inputId).value.toLowerCase();
+  let sel = document.getElementById(selectId);
+  for (let i = 0; i < sel.options.length; i++) {
+    let txt = sel.options[i].text.toLowerCase();
+    sel.options[i].style.display = txt.includes(filter) ? "" : "none";
+  }
+}
+
+function applyFilters() {
+  let city = document.getElementById("cityFilter").value;
+  let est = document.getElementById("establishmentFilter").value;
+  let pin = document.getElementById("pincodeFilter").value;
+  let filtered = allProfessionals.filter(p =>
+    (!city || p.city === city) &&
+    (!est || p.establishment === est) &&
+    (!pin || p.pincode === pin)
+  );
+  updateProfessionalDropdown(filtered);
+}
+
+function updateProfessionalDropdown(data) {
+  let sel = document.getElementById("professional");
+  sel.innerHTML = "";
+  if (data.length === 0) {
+    let opt = document.createElement("option");
+    opt.text = "No professionals available";
+    sel.add(opt);
+    return;
+  }
+  data.forEach(p => {
+    let opt = document.createElement("option");
+    opt.value = p.name;
+    opt.text = `${p.name} (${p.business_type||""}, ${p.establishment||""}, ${p.city||""}, ${p.pincode||""})`;
+    sel.add(opt);
+  });
+}
+
+window.onload = loadProfessionals;
+
+// Login
+document.getElementById("loginForm").onsubmit = function(e) {
+  e.preventDefault();
+  const phone = document.getElementById("phone");
+  const loginResult = document.getElementById("loginResult");
+
+  fetch(`${API_URL}/login_customer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: phone.value })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.phone) {
+      customerPhone = d.phone;
+      customerName = d.name;
+      loginResult.innerHTML = `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${customerName}</strong></p>`;
+    } else {
+      loginResult.innerHTML = `<p style="color:#7A2E2E;">Login failed. Please try again.</p>`;
+    }
+  })
+  .catch(err => {
+    loginResult.innerHTML = `<p style="color:#7A2E2E;">Error: ${err.message}</p>`;
+  });
+};
+
+// View slots — rendered as a tappable time-slot grid
+function viewSlots() {
+  const prof = document.getElementById("professional").value;
+  fetch(`${API_URL}/slots/${prof}/${slotDate.value}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data || data.length === 0) {
+        slotsTable.innerHTML = `<div class="empty-state">No slots open for this date yet. Try another date or professional.</div>`;
+        return;
+      }
+      let html = `<div class="slot-grid">`;
+      data.forEach(s => {
+        const canBook = (s.status === "Available" || s.status === "Filling Fast");
+        const cls = s.status === "Filling Fast" ? "filling" : (canBook ? "bookable" : "full");
+        html += `<div class="slot-chip ${cls}" ${canBook ? `onclick="bookSlot('${prof}','${slotDate.value}','${s.slot}')" tabindex="0" onkeydown="if(event.key==='Enter')bookSlot('${prof}','${slotDate.value}','${s.slot}')"` : ""}>
+          ${s.slot}
+          <span class="cap status-label">${s.status} · ${s.booked}/${s.capacity}</span>
+        </div>`;
+      });
+      html += "</div>";
+      slotsTable.innerHTML = html;
+    });
+}
+
+// Book slot
+function bookSlot(prof, date, slot) {
+  fetch(`${API_URL}/book`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: customerPhone, professional: prof, slot: slot, date: date })
+  }).then(r => r.json())
+    .then(d => {
+      if (d.error) { alert(d.error); } else { alert(d.message); }
+      viewSlots();
+    });
+}
+
+// View my appointments
+function viewMyAppointments() {
+  const prof = document.getElementById("professional").value;
+  fetch(`${API_URL}/appointments/professional/${prof}/${apptDate.value}`)
+    .then(r => r.json())
+    .then(data => {
+      const mine = data.filter(a => a.customer_phone === customerPhone);
+      if (mine.length === 0) {
+        myAppointments.innerHTML = `<div class="empty-state">No appointments with ${prof || "this professional"} on this date.</div>`;
+        return;
+      }
+      let html = `<div class="table-wrap"><table><tr><th>Professional</th><th class="mono">Slot</th><th>Status</th><th>Action</th></tr>`;
+      mine.forEach(a => {
+        html += `<tr>
+          <td>${prof}</td><td class="mono">${a.slot}</td><td>${badge(a.status)}</td>
+          <td><button class="action" onclick="reschedule('${prof}','${apptDate.value}','${a.slot}')">Reschedule</button></td>
+        </tr>`;
+      });
+      html += "</table></div>";
+      myAppointments.innerHTML = html;
+    });
+}
+
+// Reschedule
+function reschedule(prof, oldDate, oldSlot) {
+  const newDate = prompt("Enter new date (YYYY-MM-DD):");
+  const newSlot = prompt("Enter new slot (e.g. 10:00 AM):");
+  if (!newDate || !newSlot) return;
+  fetch(`${API_URL}/reschedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      phone: customerPhone, professional: prof,
+      old_date: oldDate, old_slot: oldSlot,
+      date: newDate, slot: newSlot
+    })
+  }).then(r => r.json())
+    .then(d => {
+      alert(JSON.stringify(d));
+      viewMyAppointments();
+    });
+}
+</script>
+</body>
+</html>
