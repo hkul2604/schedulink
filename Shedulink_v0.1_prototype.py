@@ -11,7 +11,7 @@ app = Flask(__name__)
 #   DATABASE_URL=postgresql://user:password@localhost:5432/appointments
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/appointments"
+    "postgresql://schedulink_postgresql_user:rVNtIjsdUQrj7XIkMEy2wtKcxRikV5NG@dpg-da1lkerm8hqs73bbblhg-a.oregon-postgres.render.com/schedulink_postgresql"
 )
 
 # Simple connection pool (min 1, max 10 connections). Adjust as needed.
