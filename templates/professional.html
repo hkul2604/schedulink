@@ -9,9 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#d1dceb;
+    --paper:#F3F2ED;
     --paper-raised:#FFFFFF;
     --ink:#1C2431;
+    --ink-deep:#12182A;
     --ink-soft:#5B6472;
     --line:#DCDACF;
     --teal:#1F6F64;
@@ -55,6 +56,13 @@
     );
     pointer-events:none;
   }
+  .topbar::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-1px;
+    height:3px;
+    background:linear-gradient(90deg, var(--teal), var(--amber));
+  }
   .topbar-inner{
     position:relative;
     display:flex;
@@ -67,6 +75,28 @@
   }
   .brand{ display:flex; align-items:center; gap:12px; }
   .brand img{ max-height:40px; display:block; }
+
+  /* ---------- Site navigation ---------- */
+  .site-nav{
+    display:flex;
+    gap:4px;
+    background:var(--tab-inactive);
+    padding:4px;
+    border-radius:999px;
+  }
+  .site-nav a{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:8px 18px;
+    border-radius:999px;
+    color:var(--ink-soft);
+    text-decoration:none;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .site-nav a:hover{ color:var(--ink); }
+  .site-nav a.active{ background:var(--teal); color:#fff; }
+  .site-nav a:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
   .brand-text .word{
     font-family:'Fraunces', serif;
     font-style:italic;
@@ -261,6 +291,25 @@
     outline-offset:2px;
   }
 
+  .btn-secondary{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:14px;
+    padding:10px 20px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    background:var(--paper-raised);
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:background 0.15s ease, border-color 0.15s ease;
+    height:fit-content;
+  }
+  .btn-secondary:hover{ background:var(--tab-inactive); border-color:var(--ink-soft); }
+  .btn-secondary:focus-visible{
+    outline:2px solid var(--ink);
+    outline-offset:2px;
+  }
+
   pre#addSlotsResult{
     font-family:'IBM Plex Mono', monospace;
     font-size:12.5px;
@@ -379,6 +428,11 @@
         <span class="tag">Professional Desk</span>
       </div>
     </div>
+    <nav class="site-nav" aria-label="Site navigation">
+      <a href="/">Home</a>
+      <a href="/customer">Customer</a>
+      <a href="/professional" class="active">Professional</a>
+    </nav>
     <div class="account-box">
       <form id="loginForm">
         <input type="email" id="email" placeholder="Email" required>
@@ -395,6 +449,7 @@
   <button class="tab-btn" data-tab="tab-view" type="button">Available Slots</button>
   <button class="tab-btn" data-tab="tab-appts" type="button">Appointments</button>
   <button class="tab-btn" data-tab="tab-metrics" type="button">Metrics</button>
+  <button class="tab-btn" data-tab="tab-profile" type="button">My Profile</button>
 </nav>
 
 <main>
@@ -417,6 +472,7 @@
         <input type="number" id="capacity" value="1" min="1">
       </div>
       <button class="btn-primary" onclick="addSlots()">Add slots</button>
+      <button class="btn-secondary" onclick="loadPreviousSlots()">Load previously used slots</button>
     </div>
     <pre id="addSlotsResult"></pre>
   </section>
@@ -463,10 +519,70 @@
     <div id="metrics"></div>
   </section>
 
+  <!-- My Profile -->
+  <section id="tab-profile" class="panel">
+    <h2>My profile</h2>
+    <p class="lede">Update how customers see your listing. Log in above, then edit and save.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="profileBusinessType">Business type</label>
+        <select id="profileBusinessType">
+          <option value="Doctor">Doctor</option>
+          <option value="Lawyer">Lawyer</option>
+          <option value="Salon">Salon</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1; min-width:220px;">
+        <label for="profileEstablishment">Establishment name</label>
+        <input type="text" id="profileEstablishment">
+      </div>
+      <div class="field" style="flex:1; min-width:180px;">
+        <label for="profileCity">City</label>
+        <input type="text" id="profileCity">
+      </div>
+      <div class="field">
+        <label for="profilePincode">Pin code</label>
+        <input type="text" id="profilePincode" required>
+      </div>
+      <button class="btn-primary" onclick="saveProfile()">Save changes</button>
+    </div>
+    <pre id="profileResult"></pre>
+  </section>
+
 </main>
 
 <script>
-const API_URL="https://schedulink-6cz7.onrender.com/"; let professionalName="";
+const API_URL="";
+let professionalName="", professionalEmail="", professionalPassword="";
+
+/* ---------- Session persistence ----------
+   sessionStorage survives a page refresh but is cleared when the browser
+   (or tab) is closed, which is exactly the login lifetime we want here. */
+const SESSION_KEY = "schedulink_professional_session";
+
+function saveSession(){
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+    name: professionalName, email: professionalEmail, password: professionalPassword
+  }));
+}
+
+function restoreSession(){
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+  try {
+    const s = JSON.parse(raw);
+    if (!s.name || !s.email || !s.password) return;
+    professionalName = s.name;
+    professionalEmail = s.email;
+    professionalPassword = s.password;
+    document.getElementById("loginResult").innerHTML =
+      `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${professionalName}</strong></p>`;
+    loadProfile();
+  } catch (e) {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+}
 
 /* ---------- Tab switching ---------- */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -506,7 +622,11 @@ document.getElementById("loginForm").onsubmit = function(e) {
   .then(d => {
     if (d.name) {
       professionalName = d.name;
+      professionalEmail = email.value;
+      professionalPassword = password.value;
+      saveSession();
       loginResult.innerHTML = `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${professionalName}</strong></p>`;
+      loadProfile();
     } else {
       loginResult.innerHTML = `<p style="color:#7A2E2E;">Login failed. Check your email and password.</p>`;
     }
@@ -523,6 +643,27 @@ function addSlots(){
    body:JSON.stringify({name:professionalName,date:slotDate.value,
      slots:slots.value.split(",").map(s=>s.trim()),capacity:parseInt(capacity.value)})
  }).then(r=>r.json()).then(d=>addSlotsResult.innerHTML=JSON.stringify(d,null,2));
+}
+
+/* ---------- Reuse previous day's slots ---------- */
+function loadPreviousSlots(){
+ if(!professionalName){ addSlotsResult.textContent = "Please log in first."; return; }
+ if(!slotDate.value){ addSlotsResult.textContent = "Pick a date first, then load previous slots into it."; return; }
+ fetch(`${API_URL}/last_slots/${professionalName}`)
+ .then(r=>r.json())
+ .then(d=>{
+   if(!d.date){
+     addSlotsResult.textContent = "No previously added slots found yet.";
+     return;
+   }
+   if(d.date === slotDate.value){
+     addSlotsResult.textContent = `Slots for ${d.date} are already what's shown — pick a different date to reuse them.`;
+     return;
+   }
+   slots.value = d.slots.join(", ");
+   if(d.capacity != null) capacity.value = d.capacity;
+   addSlotsResult.textContent = `Loaded ${d.slots.length} slot(s) from ${d.date}. Review, then click "Add slots" to save them for ${slotDate.value}.`;
+ });
 }
 
 /* ---------- View slots ---------- */
@@ -576,6 +717,40 @@ function viewAppointments(){
  });
 }
 
+/* ---------- Profile ---------- */
+function loadProfile(){
+ fetch(`${API_URL}/professionals`)
+ .then(r=>r.json()).then(list=>{
+   const mine = list.find(p=>p.name===professionalName);
+   if(mine){
+     profileBusinessType.value = mine.business_type || "Doctor";
+     profileEstablishment.value = mine.establishment || "";
+     profileCity.value = mine.city || "";
+     profilePincode.value = mine.pincode || "";
+   }
+ });
+}
+function saveProfile(){
+ if(!professionalEmail){
+   profileResult.innerHTML = "Please log in first.";
+   return;
+ }
+ if(!profilePincode.value.trim()){
+   profileResult.innerHTML = "Pin code is required.";
+   return;
+ }
+ fetch(`${API_URL}/update_professional`,{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({
+     email:professionalEmail, password:professionalPassword,
+     business_type:profileBusinessType.value,
+     establishment:profileEstablishment.value,
+     city:profileCity.value,
+     pincode:profilePincode.value
+   })
+ }).then(r=>r.json()).then(d=>profileResult.innerHTML=JSON.stringify(d,null,2));
+}
+
 /* ---------- Update status ---------- */
 function updateStatus(phone,slot,date,action){
  let ep=action==="Approved"?"approve":action==="Rejected"?"reject":"cancel";
@@ -586,6 +761,8 @@ function updateStatus(phone,slot,date,action){
    alert(JSON.stringify(d)); viewAppointments(); viewSlots(); viewMetrics();
  });
 }
+
+restoreSession();
 </script>
 </body>
 </html>

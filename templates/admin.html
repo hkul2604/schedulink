@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedulink — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDEAE0;
+    --paper-raised:#FFFFFF;
+    --ink:#1C2431;
+    --ink-soft:#5B6472;
+    --line:#DCDACF;
+    --teal:#1F6F64;
+    --teal-soft:#E4EFEC;
+    --amber:#C98A2C;
+    --amber-soft:#F6EBD8;
+    --burgundy:#7A2E2E;
+    --burgundy-soft:#F1E2DF;
+    --tab-inactive:#E7E5DC;
+    --focus:#1F6F64;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+  .topbar{
+    background:var(--paper-raised);
+    border-bottom:1px solid var(--line);
+    padding:22px 32px;
+  }
+  .topbar-inner{ max-width:960px; margin:0 auto; display:flex; align-items:center; gap:10px; }
+  .topbar .word{
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size:22px; color:var(--ink);
+  }
+  .topbar .tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-soft);
+    background:var(--burgundy-soft); color:var(--burgundy);
+    padding:3px 9px; border-radius:20px;
+  }
+
+  main{ max-width:960px; margin:0 auto; padding:36px 32px 60px; }
+
+  .lock-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:26px 28px;
+    max-width:420px;
+  }
+  .lock-card h2{ font-family:'Fraunces', serif; font-weight:600; font-size:19px; margin:0 0 4px; }
+  .lock-card p{ color:var(--ink-soft); font-size:13.5px; margin:0 0 18px; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .field label{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .field input{
+    font-family:'IBM Plex Sans', sans-serif; font-size:14px;
+    padding:9px 11px; border:1px solid var(--line); border-radius:5px;
+    background:var(--paper); color:var(--ink);
+  }
+  .field input:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+
+  .btn-primary{
+    font-family:'IBM Plex Sans', sans-serif; font-weight:500; font-size:14px;
+    padding:10px 20px; border:none; border-radius:5px;
+    background:var(--teal); color:#fff; cursor:pointer;
+    transition:background 0.15s ease;
+  }
+  .btn-primary:hover{ background:#175951; }
+  .btn-primary:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  #lockError{ color:var(--burgundy); font-size:13px; margin-top:10px; }
+  #lockError:empty{ display:none; }
+
+  #adminPanel{ display:none; }
+  #adminPanel.active{ display:block; }
+
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:12px; margin-bottom:18px;
+  }
+  .panel-head h2{ font-family:'Fraunces', serif; font-weight:600; font-size:20px; margin:0; }
+  .lock-status{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    color:var(--teal); display:flex; align-items:center; gap:6px;
+  }
+  .lock-status .dot{ width:7px; height:7px; border-radius:50%; background:var(--teal); }
+
+  .table-wrap{
+    overflow-x:auto;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  table{ border-collapse:collapse; width:100%; min-width:680px; }
+  th{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft);
+    text-align:left; padding:12px 14px; border-bottom:1px solid var(--ink);
+  }
+  td{ padding:11px 14px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:rgba(31,111,100,0.04); }
+  td.mono{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--ink-soft); }
+
+  select.tier-select{
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px;
+    padding:6px 8px; border:1px solid var(--line); border-radius:5px;
+    background:var(--paper); color:var(--ink);
+  }
+  .badge{
+    display:inline-block; font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+    padding:4px 10px; border-radius:3px; border:1px solid transparent;
+  }
+  .badge.tier-free{ color:var(--ink-soft); background:var(--tab-inactive); border-color:var(--line); }
+  .badge.tier-paid{ color:var(--amber); background:var(--amber-soft); border-color:rgba(201,138,44,0.3); }
+  .badge.tier-premium{ color:var(--teal); background:var(--teal-soft); border-color:rgba(31,111,100,0.25); }
+
+  button.action{
+    font-family:'IBM Plex Sans', sans-serif; font-size:12px; font-weight:500;
+    padding:6px 12px; border-radius:4px; border:1px solid var(--line);
+    background:var(--paper-raised); color:var(--teal); cursor:pointer;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  button.action:hover{ background:var(--teal-soft); border-color:var(--teal); }
+
+  .row-status{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-soft); margin-left:8px; }
+  .row-status.ok{ color:var(--teal); }
+  .row-status.err{ color:var(--burgundy); }
+
+  .empty-state{
+    padding:26px 4px; color:var(--ink-soft); font-size:13.5px;
+    border:1px dashed var(--line); border-radius:8px; text-align:center; margin-top:6px;
+  }
+
+  @media (max-width:640px){
+    .topbar{ padding:18px; }
+    main{ padding:26px 18px 48px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="word"></span>
+    <span class="tag">Admin</span>
+  </div>
+</header>
+
+<main>
+
+  <div id="lockCard" class="lock-card">
+    <h2>Admin access</h2>
+    <p>Enter the admin secret to manage professional access tiers.</p>
+    <div class="field">
+      <label for="adminSecret">Admin secret</label>
+      <input type="password" id="adminSecret" placeholder="•••••••••••••">
+    </div>
+    <button class="btn-primary" onclick="unlock()">Unlock</button>
+    <div id="lockError"></div>
+  </div>
+
+  <div id="adminPanel">
+    <div class="panel-head">
+      <h2>Professional access tiers</h2>
+      <span class="lock-status"><span class="dot"></span>Unlocked</span>
+    </div>
+    <div id="professionalsTable"></div>
+  </div>
+
+</main>
+
+<script>
+const API_URL = "";
+let adminSecret = "";
+
+function unlock(){
+  const secretInput = document.getElementById("adminSecret");
+  const lockError = document.getElementById("lockError");
+  const secret = secretInput.value;
+
+  fetch(`${API_URL}/admin/professionals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ admin_secret: secret })
+  })
+  .then(r => r.json().then(d => ({ status: r.status, body: d })))
+  .then(({ status, body }) => {
+    if (status !== 200) {
+      lockError.textContent = body.error || "Unable to unlock.";
+      return;
+    }
+    adminSecret = secret;
+    lockError.textContent = "";
+    document.getElementById("lockCard").style.display = "none";
+    document.getElementById("adminPanel").classList.add("active");
+    renderProfessionals(body);
+  })
+  .catch(err => { lockError.textContent = `Error: ${err.message}`; });
+}
+
+function tierBadge(tier){
+  return `<span class="badge tier-${tier}">${tier}</span>`;
+}
+
+function renderProfessionals(data){
+  const container = document.getElementById("professionalsTable");
+  if (!data || data.length === 0) {
+    container.innerHTML = `<div class="empty-state">No professionals registered yet.</div>`;
+    return;
+  }
+  let html = `<div class="table-wrap"><table>
+    <tr><th>Name</th><th>Business</th><th>City</th><th class="mono">Pin</th><th>Current tier</th><th>Set tier</th></tr>`;
+  data.forEach(p => {
+    const rowId = `row-${p.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    html += `<tr id="${rowId}">
+      <td>${p.name}</td>
+      <td>${p.business_type || "—"}</td>
+      <td>${p.city || "—"}</td>
+      <td class="mono">${p.pincode || "—"}</td>
+      <td class="current-tier">${tierBadge(p.access_type)}</td>
+      <td>
+        <select class="tier-select">
+          <option value="free" ${p.access_type === "free" ? "selected" : ""}>Free</option>
+          <option value="paid" ${p.access_type === "paid" ? "selected" : ""}>Paid</option>
+          <option value="premium" ${p.access_type === "premium" ? "selected" : ""}>Premium</option>
+        </select>
+        <button class="action" onclick="saveTier('${p.name.replace(/'/g, "\\'")}', '${rowId}')">Save</button>
+        <span class="row-status" id="${rowId}-status"></span>
+      </td>
+    </tr>`;
+  });
+  html += "</table></div>";
+  container.innerHTML = html;
+}
+
+function saveTier(name, rowId){
+  const row = document.getElementById(rowId);
+  const select = row.querySelector(".tier-select");
+  const status = document.getElementById(`${rowId}-status`);
+  status.textContent = "Saving…";
+  status.className = "row-status";
+
+  fetch(`${API_URL}/admin/set_access_type`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ admin_secret: adminSecret, name: name, access_type: select.value })
+  })
+  .then(r => r.json().then(d => ({ status: r.status, body: d })))
+  .then(({ status, body }) => {
+    if (status !== 200) {
+      document.getElementById(`${rowId}-status`).textContent = body.error || "Failed";
+      document.getElementById(`${rowId}-status`).className = "row-status err";
+      return;
+    }
+    row.querySelector(".current-tier").innerHTML = tierBadge(body.access_type);
+    document.getElementById(`${rowId}-status`).textContent = "Saved";
+    document.getElementById(`${rowId}-status`).className = "row-status ok";
+  })
+  .catch(err => {
+    document.getElementById(`${rowId}-status`).textContent = `Error: ${err.message}`;
+    document.getElementById(`${rowId}-status`).className = "row-status err";
+  });
+}
+</script>
+</body>
+</html>

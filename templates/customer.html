@@ -12,6 +12,7 @@
     --paper:#F3F2ED;
     --paper-raised:#FFFFFF;
     --ink:#1C2431;
+    --ink-deep:#12182A;
     --ink-soft:#5B6472;
     --line:#DCDACF;
     --teal:#1F6F64;
@@ -52,6 +53,13 @@
     );
     pointer-events:none;
   }
+  .topbar::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-1px;
+    height:3px;
+    background:linear-gradient(90deg, var(--teal), var(--amber));
+  }
   .topbar-inner{
     position:relative;
     display:flex;
@@ -64,6 +72,28 @@
   }
   .brand{ display:flex; align-items:center; gap:12px; }
   .brand img{ max-height:40px; display:block; }
+
+  /* ---------- Site navigation ---------- */
+  .site-nav{
+    display:flex;
+    gap:4px;
+    background:var(--tab-inactive);
+    padding:4px;
+    border-radius:999px;
+  }
+  .site-nav a{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:8px 18px;
+    border-radius:999px;
+    color:var(--ink-soft);
+    text-decoration:none;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .site-nav a:hover{ color:var(--ink); }
+  .site-nav a.active{ background:var(--teal); color:#fff; }
+  .site-nav a:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
   .brand-text .word{
     font-family:'Fraunces', serif;
     font-style:italic;
@@ -329,12 +359,17 @@
         <span class="tag">Book an appointment</span>
       </div>
     </div>
+    <nav class="site-nav" aria-label="Site navigation">
+      <a href="/">Home</a>
+      <a href="/customer" class="active">Customer</a>
+      <a href="/professional">Professional</a>
+    </nav>
     <div class="account-box">
       <form id="loginForm">
         <input type="text" id="phone" placeholder="Phone number" required>
         <button type="submit">Log in</button>
-        <div id="loginResult"></div>
       </form>
+      <div id="loginResult"></div>
     </div>
   </div>
 </header>
@@ -355,21 +390,22 @@
       <div class="filter-grid">
         <div class="combo">
           <label for="citySearch">City</label>
-          <input type="text" id="citySearch" placeholder="Search city…" onkeyup="filterDropdown('cityFilter','citySearch')">
-          <select id="cityFilter"></select>
+          <input type="text" id="citySearch" list="cityOptions" placeholder="Type or pick a city…" autocomplete="off">
+          <datalist id="cityOptions"></datalist>
         </div>
         <div class="combo">
           <label for="estSearch">Establishment</label>
-          <input type="text" id="estSearch" placeholder="Search establishment…" onkeyup="filterDropdown('establishmentFilter','estSearch')">
-          <select id="establishmentFilter"></select>
+          <input type="text" id="estSearch" list="establishmentOptions" placeholder="Type or pick an establishment…" autocomplete="off">
+          <datalist id="establishmentOptions"></datalist>
         </div>
         <div class="combo">
-          <label for="pinSearch">Pin code</label>
-          <input type="text" id="pinSearch" placeholder="Search pin code…" onkeyup="filterDropdown('pincodeFilter','pinSearch')">
-          <select id="pincodeFilter"></select>
+          <label for="pinSearch">Pin code (required)</label>
+          <input type="text" id="pinSearch" list="pincodeOptions" placeholder="Type or pick a pin code…" autocomplete="off" required>
+          <datalist id="pincodeOptions"></datalist>
         </div>
       </div>
-      <div class="filter-actions">
+      <div class="filter-actions" style="justify-content:space-between; align-items:center;">
+        <span id="filterError" style="color:var(--burgundy); font-size:13px;"></span>
         <button class="btn-primary" onclick="applyFilters()">Apply filters</button>
       </div>
     </div>
@@ -406,9 +442,33 @@
 </main>
 
 <script>
-const API_URL = "https://schedulink-6cz7.onrender.com/";
+const API_URL = "";
 let customerPhone = "", customerName = "";
 let allProfessionals = [];
+
+/* ---------- Session persistence ----------
+   sessionStorage survives a page refresh but is cleared when the browser
+   (or tab) is closed, which is exactly the login lifetime we want here. */
+const SESSION_KEY = "schedulink_customer_session";
+
+function saveSession(){
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ phone: customerPhone, name: customerName }));
+}
+
+function restoreSession(){
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+  try {
+    const s = JSON.parse(raw);
+    if (!s.phone) return;
+    customerPhone = s.phone;
+    customerName = s.name;
+    document.getElementById("loginResult").innerHTML =
+      `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${customerName}</strong></p>`;
+  } catch (e) {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+}
 
 /* ---------- Tab switching ---------- */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -432,49 +492,61 @@ function badge(status){
   return `<span class="badge ${statusClass(status)}">${status ?? "—"}</span>`;
 }
 
-// Load professionals and populate filters
+// Load professionals and populate filter suggestion lists
 function loadProfessionals() {
   fetch(`${API_URL}/professionals`)
     .then(r => r.json())
     .then(data => {
       allProfessionals = data;
-      populateDropdown("cityFilter", [...new Set(data.map(p => p.city))]);
-      populateDropdown("establishmentFilter", [...new Set(data.map(p => p.establishment))]);
-      populateDropdown("pincodeFilter", [...new Set(data.map(p => p.pincode))]);
-      updateProfessionalDropdown(data);
+      populateDatalist("cityOptions", [...new Set(data.map(p => p.city))]);
+      populateDatalist("establishmentOptions", [...new Set(data.map(p => p.establishment))]);
+      populateDatalist("pincodeOptions", [...new Set(data.map(p => p.pincode))]);
+      resetProfessionalDropdown();
     });
 }
 
-function populateDropdown(id, values) {
-  let sel = document.getElementById(id);
+// Placeholder shown until the customer picks a pin code — prevents booking
+// with a professional found without confirming the location first.
+function resetProfessionalDropdown() {
+  let sel = document.getElementById("professional");
   sel.innerHTML = "";
+  let opt = document.createElement("option");
+  opt.value = "";
+  opt.text = "Type a pin code and apply filters";
+  sel.add(opt);
+}
+
+// Datalist options are suggestions only — the input still accepts any typed value.
+function populateDatalist(id, values) {
+  let dl = document.getElementById(id);
+  dl.innerHTML = "";
   values.forEach(v => {
     if (v) {
       let opt = document.createElement("option");
       opt.value = v;
-      opt.text = v;
-      sel.add(opt);
+      dl.add(opt);
     }
   });
 }
 
-function filterDropdown(selectId, inputId) {
-  let filter = document.getElementById(inputId).value.toLowerCase();
-  let sel = document.getElementById(selectId);
-  for (let i = 0; i < sel.options.length; i++) {
-    let txt = sel.options[i].text.toLowerCase();
-    sel.options[i].style.display = txt.includes(filter) ? "" : "none";
-  }
-}
-
 function applyFilters() {
-  let city = document.getElementById("cityFilter").value;
-  let est = document.getElementById("establishmentFilter").value;
-  let pin = document.getElementById("pincodeFilter").value;
+  let city = document.getElementById("citySearch").value.trim();
+  let est = document.getElementById("estSearch").value.trim();
+  let pin = document.getElementById("pinSearch").value.trim();
+  let filterError = document.getElementById("filterError");
+
+  if (!pin) {
+    filterError.textContent = "Pin code is required — type or select one to search professionals.";
+    resetProfessionalDropdown();
+    return;
+  }
+  filterError.textContent = "";
+
+  let matches = (val, query) => (val || "").toLowerCase() === query.toLowerCase();
   let filtered = allProfessionals.filter(p =>
-    (!city || p.city === city) &&
-    (!est || p.establishment === est) &&
-    (!pin || p.pincode === pin)
+    matches(p.pincode, pin) &&
+    (!city || matches(p.city, city)) &&
+    (!est || matches(p.establishment, est))
   );
   updateProfessionalDropdown(filtered);
 }
@@ -496,7 +568,7 @@ function updateProfessionalDropdown(data) {
   });
 }
 
-window.onload = loadProfessionals;
+window.onload = function(){ loadProfessionals(); restoreSession(); };
 
 // Login
 document.getElementById("loginForm").onsubmit = function(e) {
@@ -514,6 +586,7 @@ document.getElementById("loginForm").onsubmit = function(e) {
     if (d.phone) {
       customerPhone = d.phone;
       customerName = d.name;
+      saveSession();
       loginResult.innerHTML = `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${customerName}</strong></p>`;
     } else {
       loginResult.innerHTML = `<p style="color:#7A2E2E;">Login failed. Please try again.</p>`;
@@ -527,6 +600,10 @@ document.getElementById("loginForm").onsubmit = function(e) {
 // View slots — rendered as a tappable time-slot grid
 function viewSlots() {
   const prof = document.getElementById("professional").value;
+  if (!prof) {
+    slotsTable.innerHTML = `<div class="empty-state">Select a pin code, apply filters, then choose a professional first.</div>`;
+    return;
+  }
   fetch(`${API_URL}/slots/${prof}/${slotDate.value}`)
     .then(r => r.json())
     .then(data => {
