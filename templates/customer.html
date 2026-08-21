@@ -220,6 +220,7 @@
     padding-right:28px;
   }
   .combo input:focus-visible, .combo select:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+  .combo input[readonly]{ background:var(--tab-inactive); color:var(--ink-soft); cursor:not-allowed; }
   .filter-actions{ margin-top:16px; display:flex; justify-content:flex-end; }
 
   .btn-primary{
@@ -383,24 +384,26 @@
   <!-- Book Appointment -->
   <section id="tab-book" class="panel active">
     <h2>Find a professional</h2>
-    <p class="lede">Narrow the list by city, establishment, or pin code, then pick a time that works.</p>
+    <p class="lede">Pick a business type, then city, then establishment — pin code fills in automatically.</p>
 
     <div class="filter-card">
       <div class="filter-grid">
         <div class="combo">
-          <label for="citySearch">City</label>
-          <input type="text" id="citySearch" list="cityOptions" placeholder="Type or pick a city…" autocomplete="off">
-          <datalist id="cityOptions"></datalist>
+          <label for="businessTypeFilter">Business type</label>
+          <select id="businessTypeFilter" onchange="onBusinessTypeChange()"></select>
         </div>
         <div class="combo">
-          <label for="estSearch">Establishment</label>
-          <input type="text" id="estSearch" list="establishmentOptions" placeholder="Type or pick an establishment…" autocomplete="off">
-          <datalist id="establishmentOptions"></datalist>
+          <label for="cityFilter">City</label>
+          <select id="cityFilter" onchange="onCityChange()"></select>
         </div>
         <div class="combo">
-          <label for="pinSearch">Pin code (required)</label>
-          <input type="text" id="pinSearch" list="pincodeOptions" placeholder="Type or pick a pin code…" autocomplete="off" required>
-          <datalist id="pincodeOptions"></datalist>
+          <label for="establishmentFilter">Establishment</label>
+          <select id="establishmentFilter" onchange="onEstablishmentChange()"></select>
+        </div>
+        <div class="combo">
+          <label for="pinDisplay">Pin code</label>
+          <input type="text" id="pinDisplay" placeholder="Type, pick an establishment, or use your location" onchange="onPinChange()">
+          <button type="button" class="action" style="width:fit-content;" onclick="useMyLocationForPin()">📍 Use my location</button>
         </div>
       </div>
       <div class="filter-actions" style="justify-content:space-between; align-items:center;">
@@ -491,61 +494,145 @@ function badge(status){
   return `<span class="badge ${statusClass(status)}">${status ?? "—"}</span>`;
 }
 
-// Load professionals and populate filter suggestion lists
+// Load professionals and populate the business type / city dropdowns.
+// Establishment options depend on those two, so they're built separately.
 function loadProfessionals() {
   fetch(`${API_URL}/professionals`)
     .then(r => r.json())
     .then(data => {
       allProfessionals = data;
-      populateDatalist("cityOptions", [...new Set(data.map(p => p.city))]);
-      populateDatalist("establishmentOptions", [...new Set(data.map(p => p.establishment))]);
-      populateDatalist("pincodeOptions", [...new Set(data.map(p => p.pincode))]);
+      populateSelect("businessTypeFilter", [...new Set(data.map(p => p.business_type))], "Any business type");
+      populateSelect("cityFilter", [...new Set(data.map(p => p.city))], "Any city");
+      refreshEstablishmentOptions();
       resetProfessionalDropdown();
     });
 }
 
-// Placeholder shown until the customer picks a pin code — prevents booking
-// with a professional found without confirming the location first.
+function populateSelect(id, values, placeholder) {
+  let sel = document.getElementById(id);
+  sel.innerHTML = "";
+  let opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.text = placeholder;
+  sel.add(opt0);
+  values.filter(Boolean).sort().forEach(v => {
+    let opt = document.createElement("option");
+    opt.value = v;
+    opt.text = v;
+    sel.add(opt);
+  });
+}
+
+// Placeholder shown until the customer picks an establishment — prevents
+// booking with a professional found without confirming the location first.
 function resetProfessionalDropdown() {
   let sel = document.getElementById("professional");
   sel.innerHTML = "";
   let opt = document.createElement("option");
   opt.value = "";
-  opt.text = "Type a pin code and apply filters";
+  opt.text = "Pick an establishment and apply filters";
   sel.add(opt);
 }
 
-// Datalist options are suggestions only — the input still accepts any typed value.
-function populateDatalist(id, values) {
-  let dl = document.getElementById(id);
-  dl.innerHTML = "";
-  values.forEach(v => {
-    if (v) {
-      let opt = document.createElement("option");
-      opt.value = v;
-      dl.add(opt);
+// Establishment list narrows to whatever matches business type, city, and
+// pin code (prefix match, since the customer may still be typing it) — all
+// three act as independent, combinable filters.
+function refreshEstablishmentOptions() {
+  const businessType = document.getElementById("businessTypeFilter").value;
+  const city = document.getElementById("cityFilter").value;
+  const pin = document.getElementById("pinDisplay").value.trim();
+  const matches = allProfessionals.filter(p =>
+    (!businessType || p.business_type === businessType) &&
+    (!city || p.city === city) &&
+    (!pin || (p.pincode || "").startsWith(pin))
+  );
+  const establishments = [...new Set(matches.map(p => p.establishment))];
+  populateSelect("establishmentFilter", establishments,
+    establishments.length ? "Select an establishment" : "No establishments found");
+  document.getElementById("filterError").textContent = "";
+  resetProfessionalDropdown();
+}
+
+function onBusinessTypeChange() { refreshEstablishmentOptions(); }
+function onCityChange() { refreshEstablishmentOptions(); }
+function onPinChange() { refreshEstablishmentOptions(); }
+
+// Selecting an establishment fills in (and corrects) the pin code to that
+// establishment's actual value, even if the customer had typed a different
+// one while searching — this is what keeps the final booking unambiguous.
+function onEstablishmentChange() {
+  const est = document.getElementById("establishmentFilter").value;
+  const businessType = document.getElementById("businessTypeFilter").value;
+  const city = document.getElementById("cityFilter").value;
+
+  if (!est) {
+    resetProfessionalDropdown();
+    return;
+  }
+  const match = allProfessionals.find(p =>
+    p.establishment === est &&
+    (!businessType || p.business_type === businessType) &&
+    (!city || p.city === city)
+  );
+  document.getElementById("pinDisplay").value = match ? (match.pincode || "") : "";
+  applyFilters();
+}
+
+// Reverse-geocodes the browser's current location into a pin code via
+// OpenStreetMap's free Nominatim API (no key required). Requires the
+// customer to grant location permission; falls back to manual entry on
+// any error (unsupported browser, denied permission, no result).
+function useMyLocationForPin(){
+  const filterError = document.getElementById("filterError");
+  if (!navigator.geolocation) {
+    filterError.textContent = "Location isn't supported by this browser — enter your pin code manually.";
+    return;
+  }
+  filterError.textContent = "Finding your location…";
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`)
+        .then(r => r.json())
+        .then(data => {
+          const pin = data && data.address && data.address.postcode;
+          if (pin) {
+            document.getElementById("pinDisplay").value = pin;
+            filterError.textContent = "";
+            refreshEstablishmentOptions();
+          } else {
+            filterError.textContent = "Couldn't determine a pin code for your location — enter it manually.";
+          }
+        })
+        .catch(() => {
+          filterError.textContent = "Couldn't look up your pin code — enter it manually.";
+        });
+    },
+    () => {
+      filterError.textContent = "Location access denied or unavailable — enter your pin code manually.";
     }
-  });
+  );
 }
 
 function applyFilters() {
-  let city = document.getElementById("citySearch").value.trim();
-  let est = document.getElementById("estSearch").value.trim();
-  let pin = document.getElementById("pinSearch").value.trim();
-  let filterError = document.getElementById("filterError");
+  const businessType = document.getElementById("businessTypeFilter").value;
+  const city = document.getElementById("cityFilter").value;
+  const est = document.getElementById("establishmentFilter").value;
+  const pin = document.getElementById("pinDisplay").value;
+  const filterError = document.getElementById("filterError");
 
-  if (!pin) {
-    filterError.textContent = "Pin code is required — type or select one to search professionals.";
+  if (!est) {
+    filterError.textContent = "Select an establishment to continue — pin code fills in automatically.";
     resetProfessionalDropdown();
     return;
   }
   filterError.textContent = "";
 
-  let matches = (val, query) => (val || "").toLowerCase() === query.toLowerCase();
   let filtered = allProfessionals.filter(p =>
-    matches(p.pincode, pin) &&
-    (!city || matches(p.city, city)) &&
-    (!est || matches(p.establishment, est))
+    p.establishment === est &&
+    (!businessType || p.business_type === businessType) &&
+    (!city || p.city === city) &&
+    (!pin || p.pincode === pin)
   );
   updateProfessionalDropdown(filtered);
 }
@@ -600,7 +687,7 @@ document.getElementById("loginForm").onsubmit = function(e) {
 function viewSlots() {
   const prof = document.getElementById("professional").value;
   if (!prof) {
-    slotsTable.innerHTML = `<div class="empty-state">Select a pin code, apply filters, then choose a professional first.</div>`;
+    slotsTable.innerHTML = `<div class="empty-state">Pick an establishment, apply filters, then choose a professional first.</div>`;
     return;
   }
   fetch(`${API_URL}/slots/${prof}/${slotDate.value}`)
