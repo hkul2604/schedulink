@@ -35,8 +35,16 @@ def init_db():
             role TEXT,
             phone TEXT UNIQUE,
             email TEXT UNIQUE,
-            password TEXT
+            password TEXT,
+            access_type TEXT NOT NULL DEFAULT 'free' CHECK (access_type IN ('free','paid','premium'))
         )''')
+        # Migration for databases created before this column existed. Only
+        # meaningful for customer rows — professionals' tier lives in the
+        # professionals table instead, so this is simply unused for them.
+        c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS access_type TEXT NOT NULL DEFAULT 'free'")
+        c.execute('''ALTER TABLE users DROP CONSTRAINT IF EXISTS users_access_type_check''')
+        c.execute('''ALTER TABLE users ADD CONSTRAINT users_access_type_check
+            CHECK (access_type IN ('free','paid','premium'))''')
 
         c.execute('''CREATE TABLE IF NOT EXISTS professionals (
             id SERIAL PRIMARY KEY,
@@ -83,6 +91,23 @@ def init_db():
             slot TEXT,
             date TEXT,
             status TEXT
+        )''')
+
+        # One-way in-app notifications, sent when an appointment is requested
+        # and either party is a premium user. recipient_id is the customer's
+        # phone or the professional's name, matching how they're identified
+        # everywhere else in this app (no real foreign keys anywhere here).
+        c.execute('''CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            recipient_type TEXT NOT NULL CHECK (recipient_type IN ('customer','professional')),
+            recipient_id TEXT NOT NULL,
+            professional TEXT,
+            customer_name TEXT,
+            slot TEXT,
+            date TEXT,
+            body TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT now(),
+            is_read BOOLEAN NOT NULL DEFAULT false
         )''')
 
         conn.commit()
@@ -252,6 +277,36 @@ def admin_set_access_type():
     return jsonify({"name": name, "access_type": access_type})
 
 
+# --- Admin: customer access tier ---
+# Mirrors the professional access-tier endpoints above, but customers only
+# ever live in the users table (role='customer'), keyed by phone.
+@app.route("/admin/customers", methods=["POST"])
+def admin_list_customers():
+    d = request.json
+    if not ADMIN_SECRET or d.get("admin_secret") != ADMIN_SECRET:
+        return jsonify({"error": "Unauthorized"}), 401
+    rows = query_db(
+        "SELECT name,phone,access_type FROM users WHERE role='customer' ORDER BY name"
+    )
+    return jsonify([{"name": r[0], "phone": r[1], "access_type": r[2]} for r in rows])
+
+
+@app.route("/admin/set_customer_access_type", methods=["POST"])
+def admin_set_customer_access_type():
+    d = request.json
+    if not ADMIN_SECRET or d.get("admin_secret") != ADMIN_SECRET:
+        return jsonify({"error": "Unauthorized"}), 401
+    access_type = d.get("access_type")
+    if access_type not in ("free", "paid", "premium"):
+        return jsonify({"error": "access_type must be one of: free, paid, premium"}), 400
+    phone = d.get("phone")
+    existing = query_db("SELECT phone FROM users WHERE phone=%s AND role='customer'", (phone,), one=True)
+    if not existing:
+        return jsonify({"error": "Customer not found"}), 404
+    query_db("UPDATE users SET access_type=%s WHERE phone=%s AND role='customer'", (access_type, phone))
+    return jsonify({"phone": phone, "access_type": access_type})
+
+
 @app.route("/register_customer", methods=["POST"])
 def register_customer():
     d = request.json
@@ -324,8 +379,59 @@ def last_slots(professional):
 
 
 # --- Booking ---
+# One message pair per lifecycle event a premium user should be notified
+# about. {cname}/{professional}/{slot}/{date} are filled in per appointment.
+APPOINTMENT_EVENT_MESSAGES = {
+    "requested": {
+        "professional": "New appointment request from {cname} for {slot} on {date}.",
+        "customer": "Your appointment request with {professional} for {slot} on {date} has been sent.",
+    },
+    "accepted": {
+        "professional": "You accepted {cname}'s appointment for {slot} on {date}.",
+        "customer": "Your appointment with {professional} for {slot} on {date} was accepted.",
+    },
+    "cancelled": {
+        "professional": "{cname} cancelled their appointment for {slot} on {date}.",
+        "customer": "Your appointment with {professional} for {slot} on {date} was cancelled.",
+    },
+    "rescheduled": {
+        "professional": "{cname} rescheduled their appointment to {slot} on {date}.",
+        "customer": "Your appointment with {professional} was rescheduled to {slot} on {date}.",
+    },
+}
+
+
+def notify_appointment_event(phone, cname, professional, slot, date, event):
+    """Send a one-way in-app notification to both sides of an appointment
+    lifecycle event, but only when the customer or the professional is
+    premium. `event` is one of APPOINTMENT_EVENT_MESSAGES' keys."""
+    cust_tier = query_db(
+        "SELECT access_type FROM users WHERE phone=%s AND role='customer'", (phone,), one=True
+    )
+    pro_tier = query_db(
+        "SELECT access_type FROM professionals WHERE name=%s", (professional,), one=True
+    )
+    is_premium = (cust_tier and cust_tier[0] == "premium") or (pro_tier and pro_tier[0] == "premium")
+    if not is_premium:
+        return
+    templates = APPOINTMENT_EVENT_MESSAGES[event]
+    fields = {"cname": cname, "professional": professional, "slot": slot, "date": date}
+    query_db(
+        "INSERT INTO messages (recipient_type,recipient_id,professional,customer_name,slot,date,body) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+        ("professional", professional, professional, cname, slot, date,
+         templates["professional"].format(**fields))
+    )
+    query_db(
+        "INSERT INTO messages (recipient_type,recipient_id,professional,customer_name,slot,date,body) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+        ("customer", phone, professional, cname, slot, date,
+         templates["customer"].format(**fields))
+    )
+
+
 @app.route("/book", methods=["POST"])
-def book():
+def book(event="requested"):
     d = request.json
     cust = query_db("SELECT name FROM users WHERE phone=%s AND role='customer'", (d["phone"],), one=True)
     if not cust: return jsonify({"error": "Customer not registered"}), 400
@@ -349,6 +455,7 @@ def book():
         query_db("UPDATE professional_slots SET booked_count=%s,status=%s "
                  "WHERE professional=%s AND date=%s AND slot=%s",
                  (booked, status, d["professional"], d["date"], d["slot"]))
+    notify_appointment_event(d["phone"], cname, d["professional"], d["slot"], d["date"], event)
     return jsonify({"message": "Appointment requested", "customer_name": cname})
 
 
@@ -373,7 +480,67 @@ def reschedule():
                  "WHERE professional=%s AND date=%s AND slot=%s",
                  (booked, status, d["professional"], d["old_date"], d["old_slot"]))
     # book new
-    return book()
+    return book(event="rescheduled")
+
+
+# --- Messages ---
+# One-way in-app notifications only (no replies). Fetching a recipient's
+# messages also marks them read, since there's no separate UI action for it.
+@app.route("/messages/customer/<phone>")
+def customer_messages(phone):
+    rows = query_db(
+        "SELECT id,professional,customer_name,slot,date,body,created_at,is_read "
+        "FROM messages WHERE recipient_type='customer' AND recipient_id=%s ORDER BY created_at DESC",
+        (phone,)
+    )
+    query_db(
+        "UPDATE messages SET is_read=true WHERE recipient_type='customer' AND recipient_id=%s",
+        (phone,)
+    )
+    return jsonify([
+        {"id": r[0], "professional": r[1], "customer_name": r[2], "slot": r[3], "date": r[4],
+         "body": r[5], "created_at": r[6].isoformat(), "was_read": r[7]}
+        for r in rows
+    ])
+
+
+@app.route("/messages/professional/<name>")
+def professional_messages(name):
+    rows = query_db(
+        "SELECT id,professional,customer_name,slot,date,body,created_at,is_read "
+        "FROM messages WHERE recipient_type='professional' AND recipient_id=%s ORDER BY created_at DESC",
+        (name,)
+    )
+    query_db(
+        "UPDATE messages SET is_read=true WHERE recipient_type='professional' AND recipient_id=%s",
+        (name,)
+    )
+    return jsonify([
+        {"id": r[0], "professional": r[1], "customer_name": r[2], "slot": r[3], "date": r[4],
+         "body": r[5], "created_at": r[6].isoformat(), "was_read": r[7]}
+        for r in rows
+    ])
+
+
+# Unread counts, kept separate from the list endpoints above since those
+# mark messages read as a side effect — this lets the UI show a badge
+# before the customer/professional actually opens the Messages tab.
+@app.route("/messages/customer/<phone>/unread_count")
+def customer_unread_count(phone):
+    row = query_db(
+        "SELECT COUNT(*) FROM messages WHERE recipient_type='customer' AND recipient_id=%s AND is_read=false",
+        (phone,), one=True
+    )
+    return jsonify({"unread": row[0] if row else 0})
+
+
+@app.route("/messages/professional/<name>/unread_count")
+def professional_unread_count(name):
+    row = query_db(
+        "SELECT COUNT(*) FROM messages WHERE recipient_type='professional' AND recipient_id=%s AND is_read=false",
+        (name,), one=True
+    )
+    return jsonify({"unread": row[0] if row else 0})
 
 
 # --- Appointments & Metrics ---
@@ -399,9 +566,14 @@ def metrics(professional, date):
 @app.route("/approve", methods=["POST"])
 def approve():
     d = request.json
+    appt = query_db("SELECT customer_name FROM appointments WHERE customer_phone=%s AND professional=%s "
+                     "AND slot=%s AND date=%s",
+                     (d["phone"], d["professional"], d["slot"], d["date"]), one=True)
     query_db("UPDATE appointments SET status='Approved' WHERE customer_phone=%s AND professional=%s "
              "AND slot=%s AND date=%s",
              (d["phone"], d["professional"], d["slot"], d["date"]))
+    if appt:
+        notify_appointment_event(d["phone"], appt[0], d["professional"], d["slot"], d["date"], "accepted")
     return jsonify({"message": "Approved"})
 
 
@@ -417,6 +589,9 @@ def reject():
 @app.route("/cancel", methods=["POST"])
 def cancel():
     d = request.json
+    appt = query_db("SELECT customer_name FROM appointments WHERE customer_phone=%s AND professional=%s "
+                     "AND slot=%s AND date=%s",
+                     (d["phone"], d["professional"], d["slot"], d["date"]), one=True)
     query_db("UPDATE appointments SET status='Cancelled' WHERE customer_phone=%s AND professional=%s "
              "AND slot=%s AND date=%s",
              (d["phone"], d["professional"], d["slot"], d["date"]))
@@ -432,6 +607,8 @@ def cancel():
         query_db("UPDATE professional_slots SET booked_count=%s,status=%s "
                  "WHERE professional=%s AND date=%s AND slot=%s",
                  (booked, status, d["professional"], d["date"], d["slot"]))
+    if appt:
+        notify_appointment_event(d["phone"], appt[0], d["professional"], d["slot"], d["date"], "cancelled")
     return jsonify({"message": "Cancelled"})
 
 

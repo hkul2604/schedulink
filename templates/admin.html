@@ -180,6 +180,11 @@
       <span class="lock-status"><span class="dot"></span>Unlocked</span>
     </div>
     <div id="professionalsTable"></div>
+
+    <div class="panel-head" style="margin-top:36px;">
+      <h2>Customer access tiers</h2>
+    </div>
+    <div id="customersTable"></div>
   </div>
 
 </main>
@@ -209,8 +214,19 @@ function unlock(){
     document.getElementById("lockCard").style.display = "none";
     document.getElementById("adminPanel").classList.add("active");
     renderProfessionals(body);
+    loadCustomers();
   })
   .catch(err => { lockError.textContent = `Error: ${err.message}`; });
+}
+
+function loadCustomers(){
+  fetch(`${API_URL}/admin/customers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ admin_secret: adminSecret })
+  })
+  .then(r => r.json())
+  .then(renderCustomers);
 }
 
 function tierBadge(tier){
@@ -259,6 +275,64 @@ function saveTier(name, rowId){
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ admin_secret: adminSecret, name: name, access_type: select.value })
+  })
+  .then(r => r.json().then(d => ({ status: r.status, body: d })))
+  .then(({ status, body }) => {
+    if (status !== 200) {
+      document.getElementById(`${rowId}-status`).textContent = body.error || "Failed";
+      document.getElementById(`${rowId}-status`).className = "row-status err";
+      return;
+    }
+    row.querySelector(".current-tier").innerHTML = tierBadge(body.access_type);
+    document.getElementById(`${rowId}-status`).textContent = "Saved";
+    document.getElementById(`${rowId}-status`).className = "row-status ok";
+  })
+  .catch(err => {
+    document.getElementById(`${rowId}-status`).textContent = `Error: ${err.message}`;
+    document.getElementById(`${rowId}-status`).className = "row-status err";
+  });
+}
+
+function renderCustomers(data){
+  const container = document.getElementById("customersTable");
+  if (!data || data.length === 0) {
+    container.innerHTML = `<div class="empty-state">No customers registered yet.</div>`;
+    return;
+  }
+  let html = `<div class="table-wrap"><table>
+    <tr><th>Name</th><th class="mono">Phone</th><th>Current tier</th><th>Set tier</th></tr>`;
+  data.forEach(c => {
+    const rowId = `crow-${c.phone.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    html += `<tr id="${rowId}">
+      <td>${c.name}</td>
+      <td class="mono">${c.phone}</td>
+      <td class="current-tier">${tierBadge(c.access_type)}</td>
+      <td>
+        <select class="tier-select">
+          <option value="free" ${c.access_type === "free" ? "selected" : ""}>Free</option>
+          <option value="paid" ${c.access_type === "paid" ? "selected" : ""}>Paid</option>
+          <option value="premium" ${c.access_type === "premium" ? "selected" : ""}>Premium</option>
+        </select>
+        <button class="action" onclick="saveCustomerTier('${c.phone}', '${rowId}')">Save</button>
+        <span class="row-status" id="${rowId}-status"></span>
+      </td>
+    </tr>`;
+  });
+  html += "</table></div>";
+  container.innerHTML = html;
+}
+
+function saveCustomerTier(phone, rowId){
+  const row = document.getElementById(rowId);
+  const select = row.querySelector(".tier-select");
+  const status = document.getElementById(`${rowId}-status`);
+  status.textContent = "Saving…";
+  status.className = "row-status";
+
+  fetch(`${API_URL}/admin/set_customer_access_type`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ admin_secret: adminSecret, phone: phone, access_type: select.value })
   })
   .then(r => r.json().then(d => ({ status: r.status, body: d })))
   .then(({ status, body }) => {

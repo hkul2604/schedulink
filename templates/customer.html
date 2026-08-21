@@ -167,6 +167,35 @@
     transform:translateY(0); box-shadow:0 -1px 0 var(--paper-raised);
   }
   nav.ledger-tabs button:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .tab-badge{
+    display:inline-block;
+    min-width:16px;
+    padding:1px 6px;
+    margin-left:6px;
+    border-radius:999px;
+    background:var(--amber);
+    color:#fff;
+    font-size:10px;
+    line-height:1.5;
+    text-align:center;
+    vertical-align:middle;
+  }
+  .tab-badge:empty{ display:none; }
+  .message-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-left:3px solid var(--teal);
+    border-radius:6px;
+    padding:12px 16px;
+    margin-bottom:10px;
+  }
+  .message-card.unread{ border-left-color:var(--amber); }
+  .message-card .message-body{ font-size:13.5px; margin:0 0 4px; }
+  .message-card .message-meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
 
   main{ max-width:1180px; margin:0 auto; padding:0 32px 60px; }
   .panel{
@@ -377,6 +406,7 @@
 <nav class="ledger-tabs" role="tablist" aria-label="Dashboard sections">
   <button class="tab-btn active" data-tab="tab-book" type="button">Book Appointment</button>
   <button class="tab-btn" data-tab="tab-mine" type="button">My Appointments</button>
+  <button class="tab-btn" data-tab="tab-messages" type="button" onclick="loadMessages()">Messages<span id="messagesBadge" class="tab-badge"></span></button>
 </nav>
 
 <main>
@@ -441,6 +471,13 @@
     <div id="myAppointments"></div>
   </section>
 
+  <!-- Messages -->
+  <section id="tab-messages" class="panel">
+    <h2>Messages</h2>
+    <p class="lede">Notifications about your appointment requests. Available to premium members.</p>
+    <div id="messagesList"></div>
+  </section>
+
 </main>
 
 <script>
@@ -467,6 +504,7 @@ function restoreSession(){
     customerName = s.name;
     document.getElementById("loginResult").innerHTML =
       `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${customerName}</strong></p>`;
+    refreshUnreadBadge();
   } catch (e) {
     sessionStorage.removeItem(SESSION_KEY);
   }
@@ -674,6 +712,7 @@ document.getElementById("loginForm").onsubmit = function(e) {
       customerName = d.name;
       saveSession();
       loginResult.innerHTML = `<p class="welcome-pill"><span class="dot"></span>Welcome, <strong>${customerName}</strong></p>`;
+      refreshUnreadBadge();
     } else {
       loginResult.innerHTML = `<p style="color:#7A2E2E;">Login failed. Please try again.</p>`;
     }
@@ -721,6 +760,7 @@ function bookSlot(prof, date, slot) {
     .then(d => {
       if (d.error) { alert(d.error); } else { alert(d.message); }
       viewSlots();
+      refreshUnreadBadge();
     });
 }
 
@@ -764,6 +804,36 @@ function reschedule(prof, oldDate, oldSlot) {
     .then(d => {
       alert(JSON.stringify(d));
       viewMyAppointments();
+    });
+}
+
+// Messages (premium-only in-app notifications)
+function loadMessages() {
+  if (!customerPhone) return;
+  fetch(`${API_URL}/messages/customer/${customerPhone}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data || data.length === 0) {
+        messagesList.innerHTML = `<div class="empty-state">No messages yet. These appear automatically when you're a premium member and request an appointment.</div>`;
+      } else {
+        messagesList.innerHTML = data.map(m => `
+          <div class="message-card ${m.was_read ? "" : "unread"}">
+            <p class="message-body">${m.body}</p>
+            <p class="message-meta">${new Date(m.created_at).toLocaleString()}${m.was_read ? "" : " · NEW"}</p>
+          </div>
+        `).join("");
+      }
+      // Fetching the list marks messages read server-side, so the badge clears.
+      document.getElementById("messagesBadge").textContent = "";
+    });
+}
+
+function refreshUnreadBadge() {
+  if (!customerPhone) return;
+  fetch(`${API_URL}/messages/customer/${customerPhone}/unread_count`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById("messagesBadge").textContent = d.unread > 0 ? d.unread : "";
     });
 }
 </script>
